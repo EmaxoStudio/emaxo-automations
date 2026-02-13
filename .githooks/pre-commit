@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[pre-commit] PHP lint..."
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.php$' || true)
+if [ -n "$FILES" ]; then
+  for f in $FILES; do
+    php -l "$f" >/dev/null
+  done
+fi
+
+echo "[pre-commit] Basic token scan (best-effort)..."
+# Keep it focused to avoid false positives like ENGEL_WEBHOOK_SECRET
+if git diff --cached | grep -E -i '(xox[baprs]-|ghp_[A-Za-z0-9]{30,}|AIzaSy[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|bearer[[:space:]]+[A-Za-z0-9\._-]{30,})' >/dev/null; then
+  echo "Potential token detected in staged diff. Aborting."
+  exit 1
+fi
+
+echo "[pre-commit] OK"
