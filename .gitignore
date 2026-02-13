@@ -1,0 +1,12 @@
+# secrets / local
+.webhook_secret.local
+.env
+.env.*
+*.key
+*.pem
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
