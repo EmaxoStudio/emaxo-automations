@@ -12,9 +12,11 @@ jobs:
     runs-on: [self-hosted, vps]
     steps:
       - uses: actions/checkout@v4
+
       - name: Deploy to everydayengel
         run: |
           sudo /usr/bin/bash /usr/local/bin/deploy-webhook-bridge "$(pwd)/wp-plugins/webhook-bridge" "/var/www/everydayengel/public"
+
       - name: Deploy to engel2ink
         run: |
           sudo /usr/bin/bash /usr/local/bin/deploy-webhook-bridge "$(pwd)/wp-plugins/webhook-bridge" "/var/www/engel2ink/public"
