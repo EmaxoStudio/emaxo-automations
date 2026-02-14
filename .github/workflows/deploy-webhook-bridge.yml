@@ -1,0 +1,17 @@
+name: Deploy Webhook Bridge
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "wp-plugins/webhook-bridge/**"
+      - ".github/workflows/deploy-webhook-bridge.yml"
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, vps]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy plugin to server
+        run: |
+          sudo /usr/bin/bash /usr/local/bin/deploy-webhook-bridge "$(pwd)/wp-plugins/webhook-bridge"
