@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Webhook Bridge (HMAC)
  * Description: Secure inbound webhook endpoints for automations (n8n/Make/Zapier). Uses HMAC signature.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: Engel Automations
  */
 
