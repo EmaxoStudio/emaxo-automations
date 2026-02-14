@@ -1,0 +1,39 @@
+name: Webhook Healthcheck
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Check everydayengel (www)
+        env:
+          SECRET: ${{ secrets.EVERYDAYENGEL_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          URL="https://www.everydayengel.com/wp-json/engel/v1/webhook/test"
+          BODY='{"ping":"ok"}'
+          TS="$(date +%s)"
+          SIG="$(printf "%s.%s" "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | awk '{print $2}')"
+          RES="$(curl -sS -X POST "$URL" -H "Content-Type: application/json" -H "X-Engel-Timestamp: $TS" -H "X-Engel-Signature: $SIG" --data "$BODY")"
+          echo "$RES" | jq .
+          echo "$RES" | jq -e '.ok == true' >/dev/null
+
+      - name: Check engel2ink (www)
+        env:
+          SECRET: ${{ secrets.ENGEL2INK_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          URL="https://www.engel2ink.com/wp-json/engel/v1/webhook/test"
+          BODY='{"ping":"ok"}'
+          TS="$(date +%s)"
+          SIG="$(printf "%s.%s" "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | awk '{print $2}')"
+          RES="$(curl -sS -X POST "$URL" -H "Content-Type: application/json" -H "X-Engel-Timestamp: $TS" -H "X-Engel-Signature: $SIG" --data "$BODY")"
+          echo "$RES" | jq .
+          echo "$RES" | jq -e '.ok == true' >/dev/null
