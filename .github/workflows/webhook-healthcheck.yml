@@ -1,4 +1,4 @@
-name: Webhook Healthcheck
+name: Ops Webhook Healthcheck
 
 on:
   workflow_dispatch:
@@ -9,51 +9,31 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Check ops webhook (everydayengel)
+      - name: Send signed health pings to ops-api
         env:
+          OPS_URL: https://ops.engel2ink.com/webhooks/health
           OPS_WEBHOOK_SECRET: ${{ secrets.OPS_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
 
-          URL="https://ops.engel2ink.com/webhooks/health"
-          TS="$(date +%s)"
-          BODY='{"source":"github","event":"healthcheck","site":"everydayengel","state":"UP"}'
+          send() {
+            local SITE="$1"
+            local TS BODY SIG HTTP
 
-          SIG="$(printf "%s" "$TS.$BODY" | openssl dgst -sha256 -hmac "$OPS_WEBHOOK_SECRET" -hex | awk '{print $2}')"
+            TS="$(date +%s)"
+            BODY="{\"source\":\"github\",\"event\":\"healthcheck\",\"site\":\"${SITE}\",\"state\":\"UP\",\"checked_at\":\"$(date -u +%FT%TZ)\"}"
+            SIG="$(printf "%s" "$TS.$BODY" | openssl dgst -sha256 -hmac "$OPS_WEBHOOK_SECRET" -hex | awk '{print $2}')"
 
-          TMP="$(mktemp)"
-          HTTP="$(curl -sS -o "$TMP" -w "%{http_code}" -X POST "$URL" \
-            -H "content-type: application/json" \
-            -H "x-ops-timestamp: $TS" \
-            -H "x-ops-signature: $SIG" \
-            --data "$BODY")"
+            HTTP="$(curl -sS -o /tmp/resp.json -w "%{http_code}" -X POST "$OPS_URL" \
+              -H "content-type: application/json" \
+              -H "x-ops-timestamp: $TS" \
+              -H "x-ops-signature: $SIG" \
+              --data "$BODY")"
 
-          cat "$TMP" | jq .
-          echo "HTTP=$HTTP"
-          test "$HTTP" = "200"
+            cat /tmp/resp.json
+            echo "HTTP=$HTTP"
+            test "$HTTP" = "200"
+          }
 
-      - name: Check ops webhook (engel2ink)
-        env:
-          OPS_WEBHOOK_SECRET: ${{ secrets.OPS_WEBHOOK_SECRET }}
-        run: |
-          set -euo pipefail
-
-          URL="https://ops.engel2ink.com/webhooks/health"
-          TS="$(date +%s)"
-          BODY='{"source":"github","event":"healthcheck","site":"engel2ink","state":"UP"}'
-
-          SIG="$(printf "%s" "$TS.$BODY" | openssl dgst -sha256 -hmac "$OPS_WEBHOOK_SECRET" -hex | awk '{print $2}')"
-
-          TMP="$(mktemp)"
-          HTTP="$(curl -sS -o "$TMP" -w "%{http_code}" -X POST "$URL" \
-            -H "content-type: application/json" \
-            -H "x-ops-timestamp: $TS" \
-            -H "x-ops-signature: $SIG" \
-            --data "$BODY")"
-
-          cat "$TMP" | jq .
-          echo "HTTP=$HTTP"
-          test "$HTTP" = "200"
+          send everydayengel
+          send engel2ink
