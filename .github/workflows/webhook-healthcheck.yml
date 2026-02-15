@@ -12,28 +12,48 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Check everydayengel (www)
+      - name: Check ops webhook (everydayengel)
         env:
-          SECRET: ${{ secrets.EVERYDAYENGEL_WEBHOOK_SECRET }}
+          OPS_WEBHOOK_SECRET: ${{ secrets.OPS_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
-          URL="https://www.everydayengel.com/wp-json/engel/v1/webhook/test"
-          BODY='{"ping":"ok"}'
-          TS="$(date +%s)"
-          SIG="$(printf "%s.%s" "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | awk '{print $2}')"
-          RES="$(curl -sS -X POST "$URL" -H "Content-Type: application/json" -H "X-Engel-Timestamp: $TS" -H "X-Engel-Signature: $SIG" --data "$BODY")"
-          echo "$RES" | jq .
-          echo "$RES" | jq -e '.ok == true' >/dev/null
 
-      - name: Check engel2ink (www)
+          URL="https://ops.engel2ink.com/webhooks/health"
+          TS="$(date +%s)"
+          BODY='{"source":"github","event":"healthcheck","site":"everydayengel","state":"UP"}'
+
+          SIG="$(printf "%s" "$TS.$BODY" | openssl dgst -sha256 -hmac "$OPS_WEBHOOK_SECRET" -hex | awk '{print $2}')"
+
+          TMP="$(mktemp)"
+          HTTP="$(curl -sS -o "$TMP" -w "%{http_code}" -X POST "$URL" \
+            -H "content-type: application/json" \
+            -H "x-ops-timestamp: $TS" \
+            -H "x-ops-signature: $SIG" \
+            --data "$BODY")"
+
+          cat "$TMP" | jq .
+          echo "HTTP=$HTTP"
+          test "$HTTP" = "200"
+
+      - name: Check ops webhook (engel2ink)
         env:
-          SECRET: ${{ secrets.ENGEL2INK_WEBHOOK_SECRET }}
+          OPS_WEBHOOK_SECRET: ${{ secrets.OPS_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
-          URL="https://www.engel2ink.com/wp-json/engel/v1/webhook/test"
-          BODY='{"ping":"ok"}'
+
+          URL="https://ops.engel2ink.com/webhooks/health"
           TS="$(date +%s)"
-          SIG="$(printf "%s.%s" "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | awk '{print $2}')"
-          RES="$(curl -sS -X POST "$URL" -H "Content-Type: application/json" -H "X-Engel-Timestamp: $TS" -H "X-Engel-Signature: $SIG" --data "$BODY")"
-          echo "$RES" | jq .
-          echo "$RES" | jq -e '.ok == true' >/dev/null
+          BODY='{"source":"github","event":"healthcheck","site":"engel2ink","state":"UP"}'
+
+          SIG="$(printf "%s" "$TS.$BODY" | openssl dgst -sha256 -hmac "$OPS_WEBHOOK_SECRET" -hex | awk '{print $2}')"
+
+          TMP="$(mktemp)"
+          HTTP="$(curl -sS -o "$TMP" -w "%{http_code}" -X POST "$URL" \
+            -H "content-type: application/json" \
+            -H "x-ops-timestamp: $TS" \
+            -H "x-ops-signature: $SIG" \
+            --data "$BODY")"
+
+          cat "$TMP" | jq .
+          echo "HTTP=$HTTP"
+          test "$HTTP" = "200"
