@@ -14,6 +14,19 @@ jobs:
 
       - name: Send signed health pings to ops-api
         env:
+
+      - name: Telegram alert on failure
+        if: failure()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          MSG="❌ Ops Webhook Healthcheck FAILED: $GITHUB_REPOSITORY (#$GITHUB_RUN_NUMBER) $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
+            -d "text=${MSG}" \
+            -d "disable_web_page_preview=true" >/dev/null
+          echo "OK"
           OPS_URL: https://ops.engel2ink.com/webhooks/health
           OPS_WEBHOOK_SECRET: ${{ secrets.OPS_WEBHOOK_SECRET }}
         run: |
